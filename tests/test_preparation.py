@@ -9,7 +9,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from co2.preparation import ESSENTIELLES, lignes_exploitables, preparer, taux_de_replicats
+from co2.preparation import (
+    ESSENTIELLES,
+    lignes_exploitables,
+    preparer,
+    taux_de_replicats,
+)
 
 
 @pytest.fixture
@@ -39,6 +44,7 @@ def brut() -> pd.DataFrame:
             "co2_mixte": [104.0, 104.0, 110.0, 120.0, 99.0, 350.0],
         }
     )
+
 
 def test_lignes_exploitables_ne_dedoublonne_pas(brut):
     """Etape intermediaire : les NaN sont ecartes, les variantes conservees."""
@@ -76,14 +82,12 @@ def test_filtre_sur_la_motorisation_et_ajoute_le_terme_quadratique(brut):
 def test_taux_de_replicats(brut):
     """4 lignes essence exploitables -> 3 véhicules, soit 25 % de réplicats."""
     assert taux_de_replicats(brut, "ES") == pytest.approx(0.25)
-    #assert taux_de_replicats(brut, "GO") == pytest.approx(0.00)
 
 
 def test_motorisation_hors_perimetre(brut):
     """Un code hors périmètre échoue explicitement plutôt que de renvoyer du vide."""
     with pytest.raises(ValueError, match="hors périmètre"):
         preparer(brut, "EL")
-        #preparer(brut, "EH")
 
 
 def test_ne_modifie_pas_le_dataframe_d_entree(brut):

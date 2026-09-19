@@ -71,7 +71,9 @@ def test_aller_retour_sur_disque(jeu, tmp_path):
 
     recharge = charger_modele(chemin)
     echantillon = jeu[CARACTERISTIQUES].head(10)
-    np.testing.assert_allclose(modele.predict(echantillon), recharge.predict(echantillon))
+    np.testing.assert_allclose(
+        modele.predict(echantillon), recharge.predict(echantillon)
+    )
 
 
 def test_modele_absent_echoue_explicitement(tmp_path):

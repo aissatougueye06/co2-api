@@ -60,10 +60,16 @@ def construire_modele() -> Pipeline:
         [
             ("masse", "passthrough", ["masse_ordma_min"]),
             # degree=2 sur la seule puissance : produit puiss_max et puiss_max²
-            ("puissance", PolynomialFeatures(degree=2, include_bias=False), ["puiss_max"]),
+            (
+                "puissance",
+                PolynomialFeatures(degree=2, include_bias=False),
+                ["puiss_max"],
+            ),
             (
                 "boite",
-                OneHotEncoder(handle_unknown="ignore", drop="first", sparse_output=False),
+                OneHotEncoder(
+                    handle_unknown="ignore", drop="first", sparse_output=False
+                ),
                 ["typ_boite_nb_rapp"],
             ),
         ]

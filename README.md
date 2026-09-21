@@ -32,11 +32,30 @@ pytest
 ## Structure
 
 ```
-co2/            le paquet
+co2/                  le paquet
   preparation.py
-tests/          les tests
-pyproject.toml  dependances et configuration des outils
+  modele.py
+scripts/
+  entrainer.py
+tests/                les tests
+  test_preparation.py
+  test_modele.py
+data/                 non versionné, voir Données
+  vehicules.csv
+models/               non versionné, produit par entrainer.py
+  co2.joblib
+pyproject.toml        dépendances et configuration des outils
 ```
+
+## Données
+
+Les données ne sont pas versionnées (voir `.gitignore`). Pour les récupérer :
+
+1. Télécharger la ressource « [2014] Emissions de polluants, CO2 et
+   caractéristiques des véhicules commercialisés en France » depuis
+   [data.gouv.fr](https://www.data.gouv.fr/datasets/emissions-de-co2-et-de-polluants-des-vehicules-commercialises-en-france)
+2. L'enregistrer sous `data/vehicules.csv`
+
 
 ## Entraîner le modèle
 

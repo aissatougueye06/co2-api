@@ -11,7 +11,7 @@ tourner ailleurs que dans un notebook ? ».
 - [x] Préparation des données extraite en module testé
 - [x] Entraînement, sérialisation et prédiction (`co2/modele.py`)
 
-- [ ] API de prédiction (FastAPI)
+- [x] API de prédiction (FastAPI)
 - [ ] Conteneur Docker
 - [ ] Intégration continue (GitHub Actions)
 
@@ -33,13 +33,17 @@ pytest
 
 ```
 co2/                  le paquet
+  __init__.py
   preparation.py
   modele.py
+  schemas.py
+  api.py
 scripts/
   entrainer.py
 tests/                les tests
   test_preparation.py
   test_modele.py
+  test_api.py
 data/                 non versionné, voir Données
   vehicules.csv
 models/               non versionné, produit par entrainer.py
@@ -69,3 +73,26 @@ python scripts/entrainer.py data/vehicules.csv
 Le modèle est entraîné hors ligne et sérialisé. L'API se contentera de charger
 `models/co2.joblib` : entraîner au démarrage d'un service rendrait chaque
 redéploiement imprévisible.
+
+
+## Lancer l'API
+ 
+```bash
+uvicorn co2.api:app --reload
+```
+ 
+- `http://127.0.0.1:8000/docs` — documentation interactive, générée depuis les
+  schémas Pydantic : on peut y envoyer une requête sans écrire une ligne de code.
+- `http://127.0.0.1:8000/health` — sonde de disponibilité.
+```bash
+curl -X POST http://127.0.0.1:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"masse": 1300, "puissance": 90, "boite": "M 6"}'
+# {"co2_g_par_km":119.2,"boite_connue":true}
+```
+ 
+Le chemin du modèle se surcharge par variable d'environnement (`CO2_MODELE`),
+pour le déploiement. Sans modèle sur disque, le service démarre quand même :
+`/health` répond `degrade` et `/predict` renvoie 503 — un service qui dit ce qui
+lui manque se diagnostique mieux qu'un service qui refuse de démarrer.
+ 

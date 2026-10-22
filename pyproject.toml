@@ -3,10 +3,10 @@ name = "co2"
 version = "0.1.0"
 description = "Prediction des emissions de CO2 des vehicules (donnees ADEME)"
 requires-python = ">=3.12"
-dependencies = ["pandas", "numpy", "scikit-learn"]
+dependencies = ["pandas", "numpy", "scikit-learn", "joblib", "fastapi[standard]"]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "ruff", "httpx"]
 
 [build-system]
 requires = ["setuptools"]

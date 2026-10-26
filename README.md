@@ -12,7 +12,7 @@ tourner ailleurs que dans un notebook ? ».
 - [x] Entraînement, sérialisation et prédiction (`co2/modele.py`)
 
 - [x] API de prédiction (FastAPI)
-- [ ] Conteneur Docker
+- [x] Conteneur Docker
 - [ ] Intégration continue (GitHub Actions)
 
 ## Installation
@@ -95,4 +95,28 @@ Le chemin du modèle se surcharge par variable d'environnement (`CO2_MODELE`),
 pour le déploiement. Sans modèle sur disque, le service démarre quand même :
 `/health` répond `degrade` et `/predict` renvoie 503 — un service qui dit ce qui
 lui manque se diagnostique mieux qu'un service qui refuse de démarrer.
+
+
+## Conteneur Docker
  
+Le modèle doit exister avant la construction : il est copié dans l'image.
+ 
+```bash
+python scripts/entrainer.py data/vehicules.csv   # produit models/co2.joblib
+docker build -t co2-api .
+docker run --rm -p 8000:8000 co2-api
+```
+ 
+L'API répond alors sur `http://localhost:8000` comme en local.
+ 
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"masse": 1300, "puissance": 90, "boite": "M 6"}'
+```
+ 
+Le modèle est embarqué dans l'image plutôt que monté au démarrage : l'image est
+alors autonome et versionnée avec le modèle qu'elle sert — deux images, deux
+modèles, aucune ambiguïté sur ce qui tourne. En contrepartie, réentraîner impose
+de reconstruire l'image. C'est le bon arbitrage ici, où le modèle pèse quelques
+kilo-octets et change rarement.

@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     except FileNotFoundError:
         etat["modele"] = None
     yield
-    etat["modele"] = None   #remis à None après le yield, c.-à-d. à l’arrêt.
+    etat["modele"] = None  # remis à None après le yield, c.-à-d. à l’arrêt.
 
 
 app = FastAPI(

@@ -88,7 +88,8 @@ def test_champ_manquant_rejete(client):
 
 def test_boite_inconnue_est_signalee_pas_refusee(client):
     """Une modalité jamais vue dégrade la prédiction sans faire tomber l'API."""
-    reponse = client.post("/predict", json={**VEHICULE, "boite": "X 42"})
+    with pytest.warns(UserWarning, match="unknown categories"):
+        reponse = client.post("/predict", json={**VEHICULE, "boite": "X 42"})
     assert reponse.status_code == 200
     assert reponse.json()["boite_connue"] is False
 

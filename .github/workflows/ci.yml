@@ -1,0 +1,43 @@
+# Intégration continue : à chaque PR et à chaque push sur main, GitHub lance une
+# machine Ubuntu neuve, installe le projet et exécute les contrôles. Si l'un
+# échoue, la PR affiche une croix rouge — et avec une règle de protection sur
+# main, la fusion devient impossible tant que ce n'est pas corrigé.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  controles:
+    runs-on: ubuntu-latest
+    # Un job bloqué ne doit pas consommer des heures de calcul.
+    timeout-minutes: 10
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+
+      # 3.12, comme dans le Dockerfile : on teste la version qui tourne en
+      # production, pas celle de la machine de développement.
+      - name: Installer Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Installer le projet
+        run: pip install -e ".[dev]"
+
+      # Le linter et le formateur avant les tests : ce sont les contrôles les
+      # plus rapides, autant échouer tôt.
+      - name: Style (ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Tests (pytest)
+        run: pytest

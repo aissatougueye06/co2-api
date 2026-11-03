@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from sklearn.pipeline import Pipeline
 
 from co2.modele import charger_modele, predire
@@ -47,7 +48,7 @@ app = FastAPI(
     description=(
         "Estime les émissions de CO₂ d'un véhicule thermique à partir de sa "
         "masse, sa puissance et son type de boîte. Modèle entraîné sur les "
-        "données ADEME 2014."
+        "données ADEME 2015."
     ),
     version="0.1.0",
     lifespan=lifespan,
@@ -76,6 +77,12 @@ def sante() -> Sante:
     """Sonde de disponibilité, pour l'hébergeur et la supervision."""
     charge = etat["modele"] is not None
     return Sante(statut="ok" if charge else "degrade", modele_charge=charge)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    """Redirige la racine vers la documentation interactive."""
+    return RedirectResponse(url="/docs")
 
 
 @app.post("/predict", response_model=Prediction, tags=["prediction"])

@@ -86,6 +86,12 @@ def test_champ_manquant_rejete(client):
     assert reponse.status_code == 422
 
 
+def test_racine_redirige_vers_docs(client):
+    reponse = client.get("/", follow_redirects=False)
+    assert reponse.status_code == 307
+    assert reponse.headers["location"] == "/docs"
+
+
 def test_boite_inconnue_est_signalee_pas_refusee(client):
     """Une modalité jamais vue dégrade la prédiction sans faire tomber l'API."""
     with pytest.warns(UserWarning, match="unknown categories"):

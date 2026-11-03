@@ -1,10 +1,17 @@
 # co2-api
 
+![CI](https://github.com/aissatougueye06/co2-api/actions/workflows/ci.yml/badge.svg)
+
 Mise en production du modèle de prédiction des émissions de CO₂ développé dans
 [ml-co2-prediction](https://github.com/aissatougueye06/ml-co2-prediction).
 
 Le notebook répondait à « quel modèle ? ». Ce dépôt répond à « comment le faire
 tourner ailleurs que dans un notebook ? ».
+
+**API en ligne** : https://co2-api-k8dk.onrender.com/docs
+
+*Hébergement gratuit : le service s'endort après 15 minutes sans trafic, la
+première requête peut prendre une minute.*
 
 
 ## État
@@ -14,6 +21,7 @@ tourner ailleurs que dans un notebook ? ».
 - [x] API de prédiction (FastAPI)
 - [x] Conteneur Docker
 - [x] Intégration continue (GitHub Actions)
+- [x] Déploiement continu (Render, après CI verte)
 
 
 ## Installation

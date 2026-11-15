@@ -10,25 +10,25 @@ rien ; l'entraîner au démarrage rendrait chaque redéploiement imprévisible
 
 import os
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse
 from sklearn.pipeline import Pipeline
 
-from co2.modele import charger_modele, predire
-from co2.schemas import Prediction, Sante, Vehicule
+from co2.modele import Artefact, charger_modele, predire
+from co2.schemas import InfosModele, Prediction, Sante, Vehicule
 
 CHEMIN_MODELE = Path(os.getenv("CO2_MODELE", "models/co2.joblib"))
 
 # Rempli au démarrage par le lifespan. Un dict plutôt qu'une variable globale
-# réassignée : les tests peuvent y injecter un modèle sans toucher au module.
-etat: dict[str, Pipeline | None] = {"modele": None}
+# réassignée : les tests peuvent y injecter un artefact sans toucher au module.
+etat: dict[str, Artefact | None] = {"artefact": None}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Charge le modèle au démarrage, le libère à l'arrêt.
+    """Charge l'artefact au démarrage, le libère à l'arrêt.
 
     Une erreur ici n'empêche pas le service de démarrer : /health répondra
     `modele_charge: false` et /predict renverra 503. Un service qui refuse de
@@ -36,53 +36,64 @@ async def lifespan(app: FastAPI):
     lui manque.
     """
     try:
-        etat["modele"] = charger_modele(CHEMIN_MODELE)
-    except FileNotFoundError:
-        etat["modele"] = None
+        etat["artefact"] = charger_modele(CHEMIN_MODELE)
+    except (FileNotFoundError, TypeError):
+        etat["artefact"] = None
     yield
-    etat["modele"] = None  # remis à None après le yield, c.-à-d. à l’arrêt.
+    etat["artefact"] = None
 
 
 app = FastAPI(
     title="API CO₂",
     description=(
-        "Estime les émissions de CO₂ d'un véhicule thermique à partir de sa "
-        "masse, sa puissance et son type de boîte. Modèle entraîné sur les "
-        "données ADEME 2015."
+        "Estime les émissions de CO₂ d'un véhicule thermique essence à partir de "
+        "sa masse, sa puissance et son type de boîte. Modèle HistGradientBoosting "
+        "entraîné sur les données ADEME 2014."
     ),
-    version="0.1.0",
+    # Une seule source de vérité : la version déclarée dans pyproject.toml.
+    version=version("co2"),
     lifespan=lifespan,
 )
 
 
-def _modele() -> Pipeline:
-    """Le modèle chargé, ou une 503 explicite s'il manque."""
-    modele = etat["modele"]
-    if modele is None:
+def _artefact() -> Artefact:
+    """L'artefact chargé, ou une 503 explicite s'il manque."""
+    artefact = etat["artefact"]
+    if artefact is None:
         raise HTTPException(
             status_code=503,
             detail=f"Modèle non chargé ({CHEMIN_MODELE}). Lancer l'entraînement.",
         )
-    return modele
+    return artefact
 
 
-def _boites_connues(modele: Pipeline) -> set[str]:
+def _boites_connues(modele: Pipeline) -> list[str]:
     """Les modalités de boîte vues à l'entraînement, lues dans l'encodeur."""
     encodeur = modele.named_steps["preparation"].named_transformers_["boite"]
-    return set(encodeur.categories_[0])
+    return sorted(encodeur.categories_[0])
 
 
 @app.get("/health", response_model=Sante, tags=["technique"])
 def sante() -> Sante:
     """Sonde de disponibilité, pour l'hébergeur et la supervision."""
-    charge = etat["modele"] is not None
+    charge = etat["artefact"] is not None
     return Sante(statut="ok" if charge else "degrade", modele_charge=charge)
 
 
-@app.get("/", include_in_schema=False)
-def root():
-    """Redirige la racine vers la documentation interactive."""
-    return RedirectResponse(url="/docs")
+@app.get("/modele", response_model=InfosModele, tags=["technique"])
+def infos_modele() -> InfosModele:
+    """Ce que le modèle en service sait faire, et comment il a été mesuré."""
+    artefact = _artefact()
+    m = artefact.metriques
+    return InfosModele(
+        version=app.version,
+        mae_g_par_km=round(m.mae, 2),
+        mae_naive_g_par_km=round(m.mae_naive, 2),
+        r2=round(m.r2, 4),
+        n_test=m.n_test,
+        domaine=artefact.domaine,
+        boites_connues=_boites_connues(artefact.modele),
+    )
 
 
 @app.post("/predict", response_model=Prediction, tags=["prediction"])
@@ -91,12 +102,15 @@ def prediction(vehicule: Vehicule) -> Prediction:
 
     Les bornes de plausibilité sont appliquées par Pydantic avant d'arriver
     ici : une masse hors plage ne touche jamais le modèle et reçoit un 422
-    décrivant le champ fautif.
+    décrivant le champ fautif. Entre ces bornes et celles de l'entraînement,
+    la prédiction est rendue mais signalée hors domaine.
     """
-    modele = _modele()
+    artefact = _artefact()
+    modele = artefact.modele
     return Prediction(
         co2_g_par_km=round(
             predire(modele, vehicule.masse, vehicule.puissance, vehicule.boite), 1
         ),
         boite_connue=vehicule.boite in _boites_connues(modele),
+        dans_le_domaine=artefact.dans_le_domaine(vehicule.masse, vehicule.puissance),
     )

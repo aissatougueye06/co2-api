@@ -22,6 +22,7 @@ première requête peut prendre une minute.*
 - [x] Conteneur Docker
 - [x] Intégration continue (GitHub Actions)
 - [x] Déploiement continu (Render, après CI verte)
+- [x] Modèle HistGradientBoosting, évalué sur des configurations inédites
 
 
 ## Installation
@@ -90,18 +91,29 @@ laisser en place.
   `06c6c0c765498f491b1b9921f85589a488083dbb5a62db3e5d685d2719442f2b`
 
 
-## Entraîner le modèle
+## Le modèle
+
+`HistGradientBoostingRegressor` sur la masse, la puissance et le type de boîte,
+choisi dans le [notebook 04](https://github.com/aissatougueye06/ml-co2-prediction)
+face à la régression, un arbre seul, une forêt aléatoire et XGBoost.
 
 ```bash
 python scripts/entrainer.py data/vehicules.csv
 # 2406 vehicules ES apres preparation
-# MAE 15.5 g/km (naif 42.9, x2.8) | R2 0.86 | ... train / ... test
-# Modele ecrit dans models/co2.joblib
+# MAE 8.59 g/km (naif 39.7, x4.6) | R2 0.9386 | 1896 train / 510 test
 ```
 
-Le modèle est entraîné hors ligne et sérialisé. L'API se contentera de charger
-`models/co2.joblib` : entraîner au démarrage d'un service rendrait chaque
-redéploiement imprévisible.
+Deux choix conditionnent la mesure :
+
+- **Évaluation sur des configurations inédites.** De nombreux véhicules partagent
+  exactement la même masse, la même puissance et la même boîte. Un découpage
+  aléatoire en place des « jumeaux » des deux côtés et flatte les modèles qui
+  mémorisent. Le découpage se fait donc par configuration.
+- **Réentraînement sur l'ensemble.** Les métriques viennent d'un modèle évalué sur
+  20 % des configurations ; le modèle livré est ensuite réentraîné sur toutes les
+  données, avec les mêmes hyperparamètres.
+
+L'artefact sérialisé contient le modèle, ses métriques et son domaine de validité.
 
 
 ## Lancer l'API
@@ -125,6 +137,21 @@ Le chemin du modèle se surcharge par variable d'environnement (`CO2_MODELE`),
 pour le déploiement. Sans modèle sur disque, le service démarre quand même :
 `/health` répond `degrade` et `/predict` renvoie 503 — un service qui dit ce qui
 lui manque se diagnostique mieux qu'un service qui refuse de démarrer.
+
+
+## Ce que répond l'API
+
+```json
+{"co2_g_par_km": 121.6, "boite_connue": true, "dans_le_domaine": true}
+```
+
+- `boite_connue: false` — type de boîte absent de l'entraînement : prédiction dégradée.
+- `dans_le_domaine: false` — masse ou puissance hors des valeurs vues à l'entraînement.
+  Un modèle à base d'arbres n'extrapole pas : au-delà, sa prédiction reste celle du
+  véhicule connu le plus proche.
+
+`GET /modele` décrit le modèle en service : version, erreur mesurée, référence
+naïve, domaine et boîtes connues.
 
 
 ## Conteneur Docker

@@ -43,9 +43,15 @@ class Prediction(BaseModel):
     co2_g_par_km: float = Field(description="Émissions estimées, en g/km")
     boite_connue: bool = Field(
         description=(
-            "False si ce type de boîte était absent de l'entraînement : la "
-            "prédiction est alors dégradée, calculée comme pour la modalité "
-            "de référence."
+            "False si ce type de boîte était absent de l'entraînement : il est "
+            "alors encodé hors des valeurs connues, et la prédiction est dégradée."
+        )
+    )
+    dans_le_domaine: bool = Field(
+        description=(
+            "False si la masse ou la puissance sort des valeurs vues à "
+            "l'entraînement. Le modèle n'extrapole pas : au-delà, sa prédiction "
+            "reste celle du véhicule connu le plus proche, et n'est pas fiable."
         )
     )
 
@@ -55,3 +61,21 @@ class Sante(BaseModel):
 
     statut: str
     modele_charge: bool
+
+
+class InfosModele(BaseModel):
+    """Le modèle en service : sa version, sa performance mesurée, son domaine."""
+
+    version: str
+    mae_g_par_km: float = Field(
+        description="Erreur moyenne sur des configurations absentes de l'entraînement"
+    )
+    mae_naive_g_par_km: float = Field(
+        description="Erreur d'une prédiction constante (la moyenne), pour comparaison"
+    )
+    r2: float
+    n_test: int = Field(description="Nombre de véhicules du jeu de mesure")
+    domaine: dict[str, tuple[float, float]] = Field(
+        description="Bornes (min, max) vues à l'entraînement, par variable"
+    )
+    boites_connues: list[str]

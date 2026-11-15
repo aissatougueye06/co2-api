@@ -1,6 +1,6 @@
 [project]
 name = "co2"
-version = "0.1.0"
+version = "0.2.0"
 description = "Prediction des emissions de CO2 des vehicules (donnees ADEME)"
 requires-python = ">=3.12"
 dependencies = ["pandas", "numpy", "scikit-learn", "joblib", "fastapi[standard]"]

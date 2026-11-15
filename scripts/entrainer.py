@@ -3,8 +3,7 @@
     python scripts/entrainer.py data/vehicules.csv
 
 Ce script est le seul endroit où le modèle est entraîné. L'API se contente de
-charger le fichier qu'il produit : entraîner au démarrage d'un service rendrait
-chaque redéploiement imprévisible.
+charger l'artefact qu'il produit.
 """
 
 import argparse
@@ -24,10 +23,12 @@ def main() -> None:
     donnees = preparer(charger(args.csv), args.energ)
     print(f"{len(donnees)} vehicules {args.energ} apres preparation")
 
-    modele, metriques = entrainer(donnees)
-    print(metriques)
+    artefact = entrainer(donnees)
+    print(artefact.metriques)
+    for col, (bas, haut) in artefact.domaine.items():
+        print(f"Domaine {col} : {bas:g} a {haut:g}")
 
-    chemin = sauvegarder(modele, args.sortie)
+    chemin = sauvegarder(artefact, args.sortie)
     print(f"Modele ecrit dans {chemin}")
 
 

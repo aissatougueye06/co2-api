@@ -14,6 +14,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from sklearn.pipeline import Pipeline
 
 from co2.modele import Artefact, charger_modele, predire
@@ -48,7 +49,7 @@ app = FastAPI(
     description=(
         "Estime les émissions de CO₂ d'un véhicule thermique essence à partir de "
         "sa masse, sa puissance et son type de boîte. Modèle HistGradientBoosting "
-        "entraîné sur les données ADEME 2014."
+        "entraîné sur les données ADEME 2015."
     ),
     # Une seule source de vérité : la version déclarée dans pyproject.toml.
     version=version("co2"),
@@ -78,6 +79,12 @@ def sante() -> Sante:
     """Sonde de disponibilité, pour l'hébergeur et la supervision."""
     charge = etat["artefact"] is not None
     return Sante(statut="ok" if charge else "degrade", modele_charge=charge)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    """Redirige la racine vers la documentation interactive."""
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/modele", response_model=InfosModele, tags=["technique"])

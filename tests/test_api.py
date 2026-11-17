@@ -58,6 +58,12 @@ def test_health_signale_le_modele_charge(client):
     assert reponse.json() == {"statut": "ok", "modele_charge": True}
 
 
+def test_racine_redirige_vers_docs(client):
+    reponse = client.get("/", follow_redirects=False)
+    assert reponse.status_code == 307
+    assert reponse.headers["location"] == "/docs"
+
+
 def test_prediction_plausible(client):
     reponse = client.post("/predict", json=VEHICULE)
     assert reponse.status_code == 200

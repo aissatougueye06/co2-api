@@ -93,8 +93,9 @@ laisser en place.
 
 ## Le modèle
 
-`HistGradientBoostingRegressor` sur la masse, la puissance et le type de boîte,
-choisi dans le [notebook 04](https://github.com/aissatougueye06/ml-co2-prediction)
+`HistGradientBoostingRegressor` entraîné sur les véhicules essence (ES), à partir
+de la masse, de la puissance et du type de boîte. Il a été choisi dans le
+[notebook 04](https://github.com/aissatougueye06/ml-co2-prediction/blob/main/04-arbres-boosting.ipynb)
 face à la régression, un arbre seul, une forêt aléatoire et XGBoost.
 
 ```bash
@@ -124,31 +125,36 @@ uvicorn co2.api:app --reload
 
 - `http://127.0.0.1:8000/docs` — documentation interactive, générée depuis les
   schémas Pydantic : on peut y envoyer une requête sans écrire une ligne de code.
+  La racine `/` redirige vers cette page.
 - `http://127.0.0.1:8000/health` — sonde de disponibilité.
+- `http://127.0.0.1:8000/modele` — description du modèle en service.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"masse": 1300, "puissance": 90, "boite": "M 6"}'
-# {"co2_g_par_km":119.2,"boite_connue":true}
+# {"co2_g_par_km":132.3,"boite_connue":true,"dans_le_domaine":true}
 ```
 
 Le chemin du modèle se surcharge par variable d'environnement (`CO2_MODELE`),
 pour le déploiement. Sans modèle sur disque, le service démarre quand même :
-`/health` répond `degrade` et `/predict` renvoie 503 — un service qui dit ce qui
-lui manque se diagnostique mieux qu'un service qui refuse de démarrer.
+`/health` répond `degrade`, `/predict` et `/modele` renvoient 503 — un service qui
+dit ce qui lui manque se diagnostique mieux qu'un service qui refuse de démarrer.
 
 
 ## Ce que répond l'API
 
-```json
-{"co2_g_par_km": 121.6, "boite_connue": true, "dans_le_domaine": true}
+```bash
+curl -X POST https://co2-api-k8dk.onrender.com/predict \
+  -H "Content-Type: application/json" \
+  -d '{"masse": 1300, "puissance": 800, "boite": "M 6"}'
+# {"co2_g_par_km":404.8,"boite_connue":true,"dans_le_domaine":false}
 ```
 
 - `boite_connue: false` — type de boîte absent de l'entraînement : prédiction dégradée.
 - `dans_le_domaine: false` — masse ou puissance hors des valeurs vues à l'entraînement.
-  Un modèle à base d'arbres n'extrapole pas : au-delà, sa prédiction reste celle du
-  véhicule connu le plus proche.
+  Un modèle à base d'arbres n'extrapole pas : au-delà de ces valeurs, sa prédiction
+  cesse d'évoluer et reste figée à ce qu'il a appris aux bords du domaine.
 
 `GET /modele` décrit le modèle en service : version, erreur mesurée, référence
 naïve, domaine et boîtes connues.
@@ -164,10 +170,10 @@ docker run --rm -p 8000:8000 co2-api
 L'image se construit à partir du dépôt seul, en trois étapes : une base avec les
 dépendances, une étape qui télécharge les données et entraîne le modèle, et
 l'image finale qui ne reçoit que le modèle. Les données ne sont jamais livrées.
- 
+
 Le modèle est donc par construction celui que produit le code du dépôt, à partir
 de données dont l'empreinte est vérifiée. Réentraîner impose de reconstruire
 l'image.
- 
+
 Le port d'écoute se règle par la variable `PORT` (8000 par défaut), comme
 l'attendent la plupart des hébergeurs.

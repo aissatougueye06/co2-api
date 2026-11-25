@@ -47,10 +47,10 @@ def charger(chemin: str | Path) -> pd.DataFrame:
     """Lit le CSV ADEME et nettoie les espaces de fin des colonnes texte.
 
     Le fichier est un export administratif français : séparateur point-virgule,
-    encodage latin-1, et des espaces de fin invisibles sur les colonnes à
+    encodage cp1252, et des espaces de fin invisibles sur les colonnes à
     format fixe (`"GO "` au lieu de `"GO"`).
     """
-    df = pd.read_csv(chemin, sep=";", encoding="latin-1")
+    df = pd.read_csv(chemin, sep=";", encoding="cp1252")
     texte = df.select_dtypes(include="str").columns
     df[texte] = df[texte].apply(lambda s: s.str.strip())
     return df
